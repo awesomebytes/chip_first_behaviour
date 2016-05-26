@@ -19,7 +19,10 @@ class ChipBehaviour(object):
                                           queue_size=1)
 
     def faces_cb(self, msg):
-        rospy.loginfo("Face msg: " + str(msg))
+        # msg = FaceDetections()
+        if len(msg.faces) > 0:
+            rospy.loginfo("Face msg: " + str(msg.faces))
+            self.say("Oh, face")
 
     def say(self, text):
         rospy.loginfo("Creating goal with text: " + text)
