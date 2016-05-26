@@ -29,6 +29,9 @@ class ChipBehaviour(object):
         if len(msg.faces) > 0:
             rospy.loginfo("Face msg: " + str(msg.faces))
             self.say("Oh, face")
+            f = msg.faces[0]
+            # f = FaceDetection()
+            self.look_at(f.position.x, f.position.y, f.position.z)
 
     def look_at(self, x, y, z):
         phg = PointHeadGoal()
@@ -39,7 +42,7 @@ class ChipBehaviour(object):
 
         phg.pointing_axis.z = 1.0
         phg.pointing_frame = phg.target.header.frame_id
-        phg.min_duration = rospy.Duration(2.0)
+        phg.min_duration = rospy.Duration(1.0)
         phg.max_velocity = 1.0
 
         self.point_head_ac.send_goal_and_wait(phg)
@@ -58,6 +61,6 @@ class ChipBehaviour(object):
 if __name__ == '__main__':
     rospy.init_node('robot_talk', anonymous=True)
     cb = ChipBehaviour()
-    #cb.say("Sam is an awesome teacher")
-    cb.look_at(-2.0, 0.0, 2.0)
+    # cb.say("Sam is an awesome teacher")
+    # cb.look_at(-2.0, 0.0, 2.0)
     rospy.spin()
