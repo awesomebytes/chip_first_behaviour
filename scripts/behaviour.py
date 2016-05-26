@@ -1,4 +1,9 @@
 #!/usr/bin/env python
+# MoveIt tutorial says we need this:
+import sys
+import moveit_commander
+import moveit_msgs.msg
+import geometry_msgs.msg
 
 import rospy
 from pal_interaction_msgs.msg import TtsAction, TtsGoal, TtsResult, TtsFeedback
@@ -12,6 +17,18 @@ class ChipBehaviour(object):
     def __init__(self):
         rospy.loginfo("Initializing ChipBehaviour")
 
+        moveit_commander.roscpp_initialize(sys.argv)
+
+        robot = moveit_commander.RobotCommander()
+
+        scene = moveit_commander.PlanningSceneInterface()
+
+        self.group = moveit_commander.MoveGroupCommander("right_arm_torso")
+
+        self.pose_pub = rospy.Publisher('/arm_pointing_pose',
+                                        geometry_msgs.msg.PoseStamped,
+                                        queue_size=1)
+
         self.tts_ac = SimpleActionClient('/tts', TtsAction)
         self.tts_ac.wait_for_server()
 
@@ -24,14 +41,46 @@ class ChipBehaviour(object):
                                           self.faces_cb,
                                           queue_size=1)
 
+    def point_at(self, x, y, z):
+        # Get shoulder pose
+        shoulder_pose = geometry_msgs.msg.Pose()
+        shoulder_pose.position.x = -0.21
+        shoulder_pose.position.y = -0.22
+        shoulder_pose.position.z = 1.28
+
+        pose_target = geometry_msgs.msg.Pose()
+        pose_target.orientation.w = 1.0
+
+        pose_target.position.y = x - 0.4
+        max_z = 3.0
+        if z > max_z:
+            normalized_z = 1.0
+        elif z < 0.0:
+            normalized_z = 0.0
+        else:
+            normalized_z = z / 3.0
+        normalized_z = normalized_z / 3.0
+        pose_target.position.x = normalized_z - 0.05
+        pose_target.position.z = 1.3
+        rospy.loginfo("Sending arm to: " + str(pose_target))
+        ps = geometry_msgs.msg.PoseStamped()
+        ps.header.frame_id = '/odom'
+        ps.pose = pose_target
+        self.pose_pub.publish(ps)
+        self.group.set_pose_target(pose_target)
+
+        plan1 = self.group.plan()
+        self.group.go(wait=True)
+
     def faces_cb(self, msg):
         # msg = FaceDetections()
         if len(msg.faces) > 0:
-            rospy.loginfo("Face msg: " + str(msg.faces))
+            #rospy.loginfo("Face msg: " + str(msg.faces))
             self.say("Oh, face")
             f = msg.faces[0]
             # f = FaceDetection()
-            self.look_at(f.position.x, f.position.y, f.position.z)
+            # self.look_at(f.position.x, f.position.y, f.position.z)
+            self.point_at(f.position.x, f.position.y, f.position.z)
 
     def look_at(self, x, y, z):
         phg = PointHeadGoal()
