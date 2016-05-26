@@ -24,10 +24,22 @@ class SonarHead(object):
 
         # self.torso_ac.wait_for_server()
 
+        self.sonar_reads = [0.0, 0.0]
         self.sonar_sub = rospy.Subscriber('/sonar_torso',
                                           Range,
                                           self.sonar_cb,
                                           queue_size=10)
+
+    def run(self):
+        r = rospy.Rate(10)
+        while not rospy.is_shutdown():
+            dif = self.sonar_reads[0] - self.sonar_reads[1]
+            if abs(dif) > 0.25:
+                self.move_torso_topic(
+                    self.torso_joints[0] + dif / 10.0,
+                    0.0,
+                    time=0.2)
+            r.sleep()
 
     def js_cb(self, msg):
         # msg = JointState()
@@ -36,6 +48,11 @@ class SonarHead(object):
         self.torso_joints[0] = msg.position[t1_idx]
         self.torso_joints[1] = msg.position[t2_idx]
 
+    def sonar_cb_2(self, msg):
+        if "14" in msg.header.frame_id:
+            self.sonar_reads[0] = msg.range
+        elif "15" in msg.header.frame_id:
+            self.sonar_reads[1] = msg.range
 
     def sonar_cb(self, msg):
         # 15 is left 14 is right
@@ -45,13 +62,15 @@ class SonarHead(object):
             if msg.range < 0.25:
                 #self.move_torso(-0.5, 0.0, time=2.0)
                 #self.move_torso_topic(-0.2, 0.0, time=1.0)
-                self.move_torso_topic(self.torso_joints[0] - 0.05, 0.0, time=0.2)
+                self.move_torso_topic(
+                    self.torso_joints[0] - 0.05, 0.0, time=0.2)
         elif "15" in msg.header.frame_id:
             #rospy.loginfo("Sonar left distance: " + str(msg.range))
             if msg.range < 0.25:
                 #self.move_torso(0.5, 0.0, time=2.0)
                 #self.move_torso_topic(0.2, 0.0, time=1.0)
-                self.move_torso_topic(self.torso_joints[0] + 0.05, 0.0, time=0.2)
+                self.move_torso_topic(
+                    self.torso_joints[0] + 0.05, 0.0, time=0.2)
 
     def move_torso(self, joint_1, joint_2, time=1.0):
         # -0.24 0.61 torso_2_joint
@@ -80,5 +99,6 @@ class SonarHead(object):
 if __name__ == '__main__':
     rospy.init_node('demo_sonar', anonymous=True)
     sh = SonarHead()
+    sh.run()
     # sh.move_torso(-1.0, 0.0, 3.0)
-    rospy.spin()
+    #rospy.spin()
